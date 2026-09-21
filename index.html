@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Para ti 🌻</title>
+    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-glow: #ffdf00;
+            --bg-color: #0b0c10;
+        }
+        
+        body, html {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            overflow: hidden; background-color: var(--bg-color);
+            font-family: 'Poppins', sans-serif; color: white;
+            touch-action: manipulation; user-select: none;
+        }
+
+        #canvas-bg {
+            position: absolute; top: 0; left: 0;
+            width: 100%; height: 100%; z-index: 1;
+        }
+
+        #ui-container {
+            position: absolute; top: 20px; left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 12px 25px; border-radius: 20px;
+            font-size: 1.1rem; font-weight: 600;
+            z-index: 10; box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            text-align: center; width: 85%; max-width: 400px;
+            transition: opacity 0.5s ease;
+        }
+
+        .highlight { color: var(--primary-glow); font-weight: bold; }
+
+        #game-area {
+            position: absolute; top: 0; left: 0;
+            width: 100%; height: 100%; z-index: 5;
+        }
+
+        .flower-btn {
+            position: absolute; font-size: 4.5rem;
+            background: none; border: none; cursor: pointer;
+            outline: none; -webkit-tap-highlight-color: transparent;
+            animation: float 3s ease-in-out infinite, appear 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            filter: drop-shadow(0 0 10px rgba(255, 223, 0, 0.5));
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0) rotate(-5deg); }
+            50% { transform: translateY(-15px) rotate(5deg); }
+        }
+        @keyframes appear {
+            0% { transform: scale(0); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        @keyframes pulseGlow {
+            0%, 100% { transform: scale(1); filter: drop-shadow(0 0 15px rgba(255, 223, 0, 0.6)); }
+            50% { transform: scale(1.05); filter: drop-shadow(0 0 30px rgba(255, 223, 0, 1)); }
+        }
+
+        #final-screen {
+            position: absolute; top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: radial-gradient(circle at center, #1f1f2e 0%, #0b0c10 100%);
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            text-align: center; padding: 30px; box-sizing: border-box;
+            z-index: 20; opacity: 0; pointer-events: none;
+            transition: opacity 1.5s ease;
+        }
+
+        #final-screen.visible { opacity: 1; pointer-events: all; }
+
+        .giant-flower { font-size: 6rem; animation: pulseGlow 2s infinite; margin-bottom: 5px; }
+
+        .title {
+            font-family: 'Dancing Script', cursive; font-size: 2.8rem;
+            color: var(--primary-glow); margin: 10px 0;
+            text-shadow: 0 0 10px rgba(255, 223, 0, 0.4);
+        }
+
+        .message {
+            font-size: 1.05rem; line-height: 1.6; color: #e0e0e0;
+            max-width: 400px; margin-top: 15px; margin-bottom: 25px;
+        }
+
+        .action-btn {
+            background: linear-gradient(45deg, #ffdf00, #ffaa00);
+            border: none; border-radius: 25px;
+            padding: 15px 30px; font-size: 1.1rem; font-weight: bold;
+            color: #1a1a1a; cursor: pointer;
+            box-shadow: 0 4px 15px rgba(255, 223, 0, 0.4);
+            transition: transform 0.1s, filter 0.3s;
+            font-family: 'Poppins', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+            z-index: 30;
+        }
+        .action-btn:active { transform: scale(0.95); filter: brightness(1.2); }
+
+        /* Tarjeta de Sorpresa Final */
+        #custom-modal {
+            position: fixed; top: 50%; left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            background: rgba(25, 25, 35, 0.85);
+            backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
+            border: 2px solid rgba(255, 223, 0, 0.5);
+            border-radius: 25px; padding: 35px 25px;
+            width: 85%; max-width: 350px; text-align: center;
+            z-index: 100; opacity: 0;
+            transition: all 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.6), inset 0 0 20px rgba(255, 223, 0, 0.2);
+            pointer-events: none;
+        }
+
+        #custom-modal.show {
+            transform: translate(-50%, -50%) scale(1);
+            opacity: 1; pointer-events: all;
+        }
+
+        .modal-icon { font-size: 3.5rem; margin-bottom: 10px; animation: heartbeat 1.5s infinite; }
+        
+        @keyframes heartbeat {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.15); filter: drop-shadow(0 0 10px rgba(255,255,255,0.5)); }
+        }
+
+        .falling-item {
+            position: absolute; top: -50px; z-index: 50;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas-bg"></canvas>
+
+    <div id="ui-container">
+        <span id="flirty-text">Atrapa las flores para una sorpresa 🌻</span>
+        <br><span id="score" class="highlight">0</span> / 5
+    </div>
+    
+    <div id="game-area"></div>
+
+    <div id="final-screen">
+        <div class="giant-flower">🌻</div>
+        <h1 class="title">¡Feliz 21 de Septiembre!</h1>
+        <div class="message">
+            Hice este detalle porque mereces todas las flores del mundo, sean virtuales o reales. Eres mi persona favorita y cada día me enamoro más de ti. Te amo muchísimo. 💛
+        </div>
+        <button id="main-btn" class="action-btn" onclick="triggerFinalSequence()">Reclamar un abrazo gigante 🥰</button>
+    </div>
+
+    <!-- Tarjeta Dinámica Final -->
+    <div id="custom-modal">
+        <div id="modal-icon" class="modal-icon">💌</div>
+        <h2 id="modal-title" class="title" style="font-size: 2.2rem; margin: 0 0 10px 0;">¡Vale Canjeado!</h2>
+        <div id="modal-message" class="message" style="margin-top: 0; font-size: 1rem;">
+            Tienes un abrazo inmenso y muchos besitos guardados en el sistema esperando por ti. <br><br> Nos vemos luego para dártelos todos. ✨
+        </div>
+        <button id="modal-btn" class="action-btn" style="padding: 10px 25px; font-size: 1rem;" onclick="handleModalBtn()">¡Te amo!</button>
+    </div>
+
+    <script>
+        // Luciérnagas de fondo
+        const canvas = document.getElementById('canvas-bg');
+        const ctx = canvas.getContext('2d');
+        let width, height;
+        let fireflies = [];
+
+        function resize() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        class Firefly {
+            constructor() {
+                this.x = Math.random() * width;
+                this.y = Math.random() * height;
+                this.size = Math.random() * 2 + 1;
+                this.speedX = Math.random() * 1 - 0.5;
+                this.speedY = Math.random() * 1 - 0.5;
+                this.opacity = Math.random();
+                this.fade = Math.random() * 0.02 + 0.005;
+            }
+            update() {
+                this.x += this.speedX; this.y += this.speedY;
+                if (this.x < 0 || this.x > width) this.speedX *= -1;
+                if (this.y < 0 || this.y > height) this.speedY *= -1;
+                this.opacity += this.fade;
+                if (this.opacity >= 1 || this.opacity <= 0.1) this.fade *= -1;
+            }
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(255, 234, 112, ${this.opacity})`;
+                ctx.shadowBlur = 10; ctx.shadowColor = "#ffea70"; ctx.fill();
+            }
+        }
+        for (let i = 0; i < 40; i++) fireflies.push(new Firefly());
+        function animateBg() {
+            ctx.clearRect(0, 0, width, height);
+            fireflies.forEach(f => { f.update(); f.draw(); });
+            requestAnimationFrame(animateBg);
+        }
+        animateBg();
+
+        // Lógica del Minijuego
+        const gameArea = document.getElementById('game-area');
+        const scoreEl = document.getElementById('score');
+        const textEl = document.getElementById('flirty-text');
+        const finalScreen = document.getElementById('final-screen');
+        const uiContainer = document.getElementById('ui-container');
+        
+        let score = 0;
+        const target = 5;
+
+        const cheekyPhrases = [
+            "Atrapa las flores para una sorpresa 🌻",
+            "Eres más linda que cualquier flor del mundo 💛",
+            "Cada flor es un besito que te debo 😘",
+            "Qué rápidos reflejos... así de rápido me enamoraste 🥰",
+            "¡Solo falta una! Apúrate que quiero verte sonreír ✨"
+        ];
+
+        function hapticFeedback() {
+            if (navigator.vibrate) navigator.vibrate([30, 50, 30]);
+        }
+
+        function createExplosion(x, y) {
+            for (let i = 0; i < 8; i++) {
+                const particle = document.createElement('div');
+                particle.innerText = '✨';
+                particle.style.position = 'absolute';
+                particle.style.left = x + 'px'; particle.style.top = y + 'px';
+                particle.style.fontSize = '1.5rem'; particle.style.pointerEvents = 'none';
+                particle.style.transition = 'all 0.6s ease-out'; particle.style.opacity = '1';
+                gameArea.appendChild(particle);
+                particle.getBoundingClientRect(); 
+                const angle = Math.random() * Math.PI * 2;
+                const distance = Math.random() * 60 + 30;
+                particle.style.transform = `translate(${Math.cos(angle) * distance}px, ${Math.sin(angle) * distance}px) scale(0)`;
+                particle.style.opacity = '0';
+                setTimeout(() => particle.remove(), 600);
+            }
+        }
+
+        function spawnFlower() {
+            const flower = document.createElement('button');
+            flower.className = 'flower-btn';
+            flower.innerText = '🌻';
+
+            const size = 80; 
+            const maxX = window.innerWidth - size - 20;
+            const maxY = window.innerHeight - size - 20;
+            const x = Math.max(20, Math.random() * maxX);
+            const y = Math.max(120, Math.random() * maxY); 
+
+            flower.style.left = x + 'px'; flower.style.top = y + 'px';
+
+            flower.addEventListener('pointerdown', function(e) {
+                e.preventDefault();
+                hapticFeedback();
+                
+                const rect = flower.getBoundingClientRect();
+                createExplosion(rect.left + rect.width/2, rect.top + rect.height/2);
+
+                score++;
+                scoreEl.innerText = score;
+                
+                if (score < target) {
+                    textEl.innerText = cheekyPhrases[score];
+                }
+                
+                flower.remove();
+
+                if (score < target) {
+                    setTimeout(spawnFlower, 300);
+                } else {
+                    uiContainer.style.opacity = '0';
+                    setTimeout(() => finalScreen.classList.add('visible'), 500);
+                }
+            });
+
+            gameArea.appendChild(flower);
+        }
+
+        setTimeout(spawnFlower, 500);
+
+        function spawnFallingItem() {
+            const item = document.createElement('div');
+            const emojis = ['💛', '🌻', '✨', '🤍', '🥰'];
+            item.innerText = emojis[Math.floor(Math.random() * emojis.length)];
+            item.className = 'falling-item';
+            
+            item.style.left = Math.random() * 100 + 'vw';
+            item.style.fontSize = (Math.random() * 1.5 + 1) + 'rem';
+            
+            document.body.appendChild(item);
+
+            const duration = Math.random() * 2000 + 3000; 
+            
+            item.animate([
+                { transform: `translateY(0) rotate(0deg)` },
+                { transform: `translateY(120vh) rotate(${Math.random() * 360}deg)` }
+            ], {
+                duration: duration,
+                easing: 'linear'
+            });
+
+            setTimeout(() => item.remove(), duration);
+        }
+
+        function triggerFinalSequence() {
+            hapticFeedback();
+            
+            document.getElementById('main-btn').style.opacity = '0';
+            document.getElementById('main-btn').style.pointerEvents = 'none';
+
+            for(let i = 0; i < 40; i++) {
+                setTimeout(spawnFallingItem, i * 70); 
+            }
+
+            setTimeout(() => {
+                document.getElementById('custom-modal').classList.add('show');
+            }, 300);
+        }
+
+        // MÁQUINA DE ESTADOS PARA LA TARJETA
+        let modalStep = 0;
+
+        function handleModalBtn() {
+            hapticFeedback();
+            
+            const modal = document.getElementById('custom-modal');
+            const icon = document.getElementById('modal-icon');
+            const title = document.getElementById('modal-title');
+            const msg = document.getElementById('modal-message');
+            const btn = document.getElementById('modal-btn');
+
+            if (modalStep === 0) {
+                // Paso 1: La broma del Michi
+                icon.innerText = '🐈';
+                icon.style.animation = 'none'; 
+                title.innerText = 'Intercepción Felina';
+                title.style.color = '#ffaa00';
+                msg.innerHTML = '¡Error en la entrega! El michi de la casa ha interceptado el paquete de abrazos y se niega a soltarlo.<br><br>Se requiere tu presencia inmediata para negociar el rescate de los besos directamente con la gerencia felina. (Se sugiere traer premios). 🐾';
+                btn.innerText = 'Ir a negociar con el gato 🤣';
+                
+                modal.animate([
+                    { transform: 'translate(-50%, -55%)' },
+                    { transform: 'translate(-50%, -48%)' },
+                    { transform: 'translate(-50%, -50%)' }
+                ], { duration: 300, iterations: 1 });
+
+                modalStep = 1;
+
+            } else if (modalStep === 1) {
+                // Paso 2: Es bromita y cierre romántico
+                icon.innerText = '🥺';
+                icon.style.animation = 'heartbeat 1.5s infinite';
+                title.innerText = '¡Mentira!';
+                title.style.color = 'var(--primary-glow)';
+                msg.innerHTML = 'Es bromita... el michi te quiere mucho, pero yo te amo muchísimo más. 🥰<br><br>Gracias por hacerme tan feliz. ✨';
+                btn.innerText = '¡BAY! 🏃‍♀️';
+                
+                modalStep = 2;
+
+            } else if (modalStep === 2) {
+                // Paso 3: Aparece la foto real de tu gato
+                icon.style.display = 'none'; // Ocultamos el emoji para hacer espacio
+                title.innerText = 'BESO PARA TI';
+                
+                // Aquí usamos la etiqueta <img>. Le puse estilos para que se adapte al tamaño de la tarjeta
+                msg.innerHTML = '<img src="michi.png" alt="Foto de mi gato" style="width: 100%; max-height: 220px; object-fit: cover; border-radius: 15px; border: 2px solid var(--primary-glow); margin-bottom: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.5);"><br>¡Ahora sí, bay jajaj te amito! ❤️';
+                
+                btn.innerText = 'Cerrar tarjeta';
+                
+                modalStep = 3;
+
+            } else {
+                // Paso 4: Cerrar y limpiar todo
+                modal.classList.remove('show');
+                
+                setTimeout(() => {
+                    document.getElementById('main-btn').style.opacity = '1';
+                    document.getElementById('main-btn').style.pointerEvents = 'all';
+                    
+                    // Resetear al estado original por si quiere volver a jugar
+                    modalStep = 0;
+                    icon.style.display = 'block'; // Volvemos a mostrar el emoji
+                    icon.innerText = '💌';
+                    icon.style.animation = 'heartbeat 1.5s infinite';
+                    title.innerText = '¡Vale Canjeado!';
+                    title.style.color = 'var(--primary-glow)';
+                    msg.innerHTML = 'Tienes un abrazo inmenso y muchos besitos guardados en el sistema esperando por ti. <br><br> Nos vemos luego para dártelos todos. ✨';
+                    btn.innerText = '¡Te amo!';
+                }, 500);
+            }
+        }
+    </script>
+</body>
+</html>
